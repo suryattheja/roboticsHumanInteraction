@@ -39,6 +39,8 @@
 #include <sensor_msgs/Image.h> //added from follower
 #include <depth_image_proc/depth_traits.h>  //added from follower
 #include <sound_play/sound_play.h>
+#include <string.h>
+
 
 
 ros::Publisher pub;
@@ -58,6 +60,9 @@ double blob_x;
 double obstaclex;
 double obstaclez;
 
+
+//maxz
+double max_z_=0.8;
 //states
 int obstate=0; //if obstactle is detected
 int blobstate=0; //if target is detected 
@@ -111,9 +116,9 @@ void imagecb(const sensor_msgs::ImageConstPtr& depth_msg)
 
 	//local variables
   double min_y_ = 0.1; /**< The minimum y position of the points in the box. */
-  double max_y_ = 0.7; /**< The maximum y position of the points in the box. */
-  double min_x_ = -0.7; /**<The minimum x position of the points in the box. */
-  double max_x_ = 0.7; /**< The maximum x position of the points in the box. */
+  double max_y_ = 0.6; /**< The maximum y position of the points in the box. */
+  double min_x_ = -0.5; /**<The minimum x position of the points in the box. */
+  double max_x_ = 0.5; /**< The maximum x position of the points in the box. */
   double max_z_ = 0.8; /**< The maximum z position of the points in the box. */
   double goal_z_ = 0.1; /**< The distance away from the robot to hold the centroid */
   double z_scale_ = 2.0; /**< The scaling factor for translational robot speed */
@@ -168,7 +173,7 @@ void imagecb(const sensor_msgs::ImageConstPtr& depth_msg)
     }
 
     //If there are points, find the centroid and calculate the command goal.
-    if (n>4000)
+    if (n>2000)
     {
       x /= n;
       y /= n;        //At this point, x,y,z are the centroid coordinates
@@ -199,20 +204,21 @@ int main (int argc, char** argv)
   ros::Subscriber blobsSubscriber = nh.subscribe("/blobs", 10, blobsCallBack);
   //subscribe to camera/depth/image_rect topic 
   ros::Subscriber sub_= nh.subscribe<sensor_msgs::Image>("camera/depth/image_rect", 1, imagecb ); // follower.cpp //&BotFollower::imagecb, this
-
+ std::string s = "Help";
   ros::Rate loop_rate(10);
   geometry_msgs::Twist t;
   //sc.say("I am in main function");
 
 while(ros::ok()){
+max_z_=0.8;
 std::cout<<"blobstate "<<blobstate<<"\n";
 std::cout<<"obstate "<<obstate<<"\n";
 
 // imp: target and obstacle not in the same path
 
-/*
+
 if(blobstate==1) // if target found, move toward target.
-{
+{	std::cout<<"target found";
 	geometry_msgs::TwistPtr cmd(new geometry_msgs::Twist());
 	secs=0;
 	timer=0;
@@ -223,8 +229,9 @@ if(blobstate==1) // if target found, move toward target.
 
 
 
-else if(secs<2)// it has been <60 seconds since saw the target. Do obstacle avoidance.
+else if(secs<10)// it has been <60 seconds since saw the target. Do obstacle avoidance.
 {
+std::cout<<"panic walk"<<"\n";
 if(timer==0) //if timer is off, initialize t1 and start.
 {
 std::cout<<"turning timer on"<<"\n"; 
@@ -241,13 +248,13 @@ secs=t2-t1;
 	{
 	geometry_msgs::TwistPtr cmd(new geometry_msgs::Twist());
 	cmd->linear.x=0.0;
-	cmd->angular.z=0.7; //rotate away from the obstacle
+	cmd->angular.z=0.5; //rotate away from the obstacle
 	cmdpub_.publish(cmd);
 	}
 	else
 	{
 	geometry_msgs::TwistPtr cmd(new geometry_msgs::Twist());
-	cmd->linear.x=0.3;
+	cmd->linear.x=0.4;
 	cmd->angular.z=0.0; // move forward
 	cmdpub_.publish(cmd);
 	}
@@ -255,34 +262,36 @@ secs=t2-t1;
 } 
 }// end of else if
 
-*/
-//else if(secs>=2)
-if(1)
+else if(secs>=10)
+//if(1)
 {
+max_z_=0.4;
 // play sound here
-sc.say("Please lead me to the target");
-sc.stopSaying("Please lead me to the target");
+if(obstate==0){
+std::cout<<"turning about"<<"\n";
+sc.say(s);
+ros::Duration(0.5).sleep();
 
 geometry_msgs::TwistPtr cmd(new geometry_msgs::Twist());
 cmd->linear.x=0.0;
-cmd->angular.z=0.2; // rotate about
+cmd->angular.z=0.5; // rotate about
 cmdpub_.publish(cmd);
+}
 
 if(obstate==1)// ob here is the human
-{
+{	std::cout<<"following human";
         geometry_msgs::TwistPtr cmd(new geometry_msgs::Twist());  //set values of scales
-        cmd->linear.x = 0.1;
+        cmd->linear.x = 0.3;
         cmd->angular.z = obstaclez;
-        cmdpub_.publish(cmd);
+	cmdpub_.publish(cmd);
 
 }
-
-}
-
+} // end of else if
 //Reset the state
 obstate=0;
 blobstate=0;
 // Spin
+//sc.stopSaying(s);
 ros::spinOnce();
 loop_rate.sleep();
   }

@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   cmvision
   sensor_msgs
   sound_play
+  
 )
 
 ## System dependencies are found with CMake's conventions
